@@ -90,11 +90,24 @@
     },
     {
       "cell_type": "code",
-      "execution_count": null,
+      "execution_count": 1,
       "metadata": {
-        "id": "unadKrZ3nSlx"
+        "id": "unadKrZ3nSlx",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "3a1e0079-bf43-4e30-963b-fc42268652d5"
       },
-      "outputs": [],
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Requirement already satisfied: openpyxl in /usr/local/lib/python3.13/dist-packages (3.1.5)\n",
+            "Requirement already satisfied: et-xmlfile in /usr/local/lib/python3.13/dist-packages (from openpyxl) (2.0.0)\n"
+          ]
+        }
+      ],
       "source": [
         "#นำเข้าฟอนต์กราฟ\n",
         "!pip install openpyxl\n",
@@ -103,7 +116,7 @@
     },
     {
       "cell_type": "code",
-      "execution_count": null,
+      "execution_count": 2,
       "metadata": {
         "id": "pgwddnAKnVHk"
       },
