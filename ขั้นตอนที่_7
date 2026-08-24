@@ -1,0 +1,244 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyOZ7FFv560Y4OtzyrqpYSNB",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/krittiyaT/Project-Group2/blob/main/%E0%B8%82%E0%B8%B1%E0%B9%89%E0%B8%99%E0%B8%95%E0%B8%AD%E0%B8%99%E0%B8%97%E0%B8%B5%E0%B9%88_7\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#ขั้นตอนที่ 7 - วิเคราะห์ข้อมูลด้วย pandas เเละ SQL"
+      ],
+      "metadata": {
+        "id": "rbrOF2f2fzFp"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "##7.1 วิเคราะห์ด้วย pandas\n"
+      ],
+      "metadata": {
+        "id": "lM-csxFSgL9z"
+      }
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "WRZtCJ71fxkR"
+      },
+      "outputs": [],
+      "source": [
+        "df_merged = df_loans.merge(\n",
+        "    df_books[[\"book_id\", \"category_name\"]],\n",
+        "    on=\"book_id\",\n",
+        "    how=\"left\"\n",
+        ").merge(\n",
+        "    df_members[[\"member_id\", \"member_type\", \"name\"]],\n",
+        "    on=\"member_id\",\n",
+        "    how=\"left\"\n",
+        ")\n",
+        "\n",
+        "# Q1: หมวดไหนถูกยืมมากที่สุด?\n",
+        "category_summary = df_merged.groupby(\"category_name\").agg(\n",
+        "    total_loans=(\"loan_id\", \"count\"),\n",
+        "    total_late_fee=(\"late_fee\", \"sum\")\n",
+        ").reset_index().sort_values(\"total_loans\", ascending=False)\n",
+        "print(\"Pandas Q1:\", category_summary)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q2 : สมาชิกประเภทไหนคืนหนังสือช้ากว่า?\n",
+        "member_type_summary = df_merged.groupby(\"member_type\").agg(\n",
+        "    total_loans=(\"loan_id\", \"count\"),\n",
+        "    avg_late_fee=(\"late_fee\", \"mean\")\n",
+        ").reset_index().sort_values(\"avg_late_fee\", ascending=False)\n",
+        "print(\"Pandas Q2:\", member_type_summary)"
+      ],
+      "metadata": {
+        "id": "uVEBBBLZgry7"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q3: ใครคืนช้าที่สุด (Top late fee)\n",
+        "top_late = df_merged[df_merged[\"late_fee\"]> 0].sort_values(\n",
+        "    [\"late_fee\", \"loan_id\"], ascending=[False, True]\n",
+        ")\n",
+        "print(\"Pandas Q3:\", top_late.head())"
+      ],
+      "metadata": {
+        "id": "D_iWMueXh5lK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q4: 5 สมาชิกที่ยืมบ่อยที่สุด\n",
+        "top_members = df_merged.groupby(\"name\").agg(\n",
+        "    total_borrows=(\"loan_id\", \"count\")\n",
+        ").reset_index().sort_values(\n",
+        "    [\"total_borrows\", \"name\"], ascending=[False, True]\n",
+        ").head(5)\n",
+        "print(\"Pandas Q4:\", top_members)"
+      ],
+      "metadata": {
+        "id": "VAnWIS2Silmh"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q5: รายการที่ยังไม่คืน\n",
+        "not_returned = df_merged[df_merged[\"return_date\"].isnull()].sort_values(\n",
+        "    [\"due_date\", \"loan_id\"]\n",
+        ")\n",
+        "print(\"Pandas Q5:\", not_returned.head())\n"
+      ],
+      "metadata": {
+        "id": "8D3IYPuUkKJX"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 7.2 วิเคราะห์ด้วย SQL"
+      ],
+      "metadata": {
+        "id": "zs6qGeqAkV4I"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q1: หมวดไหนถูกยืมมากที่สุด?\n",
+        "q1 = pd.read_sql_query(\"\"\"\n",
+        "    SELECT b.category_name,\n",
+        "           COUNT(*) AS total_loans,\n",
+        "           SUM(l.late_fee) AS total_late_fee\n",
+        "    FROM loans l\n",
+        "    JOIN books b ON l.book_id = b.book_id\n",
+        "    GROUP BY b.category_name\n",
+        "    ORDER BY total_loans DESC;\n",
+        "\"\"\", conn)\n",
+        "print(\"SQL Q1:\", q1)"
+      ],
+      "metadata": {
+        "id": "ylHbJlMWkXnY"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q2: สมาชิกประเภทไหนคืนหนังสือช้ากว่า?\n",
+        "q2 = pd.read_sql_query(\"\"\"\n",
+        "    SELECT m.member_type,\n",
+        "           COUNT(*) AS total_loans,\n",
+        "           AVG(l.late_fee) AS avg_late_fee\n",
+        "    FROM loans l\n",
+        "    JOIN members m ON l.member_id = m.member_id\n",
+        "    GROUP BY m.member_type\n",
+        "    ORDER BY avg_late_fee DESC;\n",
+        "\"\"\", conn)\n",
+        "print(\"SQL Q2:\", q2)"
+      ],
+      "metadata": {
+        "id": "_SSxWVn4kZxX"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q3: ใครคืนช้าที่สุด (Top late fee)\n",
+        "q3 = pd.read_sql_query(\"\"\"\n",
+        "    SELECT loan_id, book_id, member_id, member_name, late_fee\n",
+        "    FROM loans\n",
+        "    WHERE late_fee > 0\n",
+        "    ORDER BY late_fee DESC;\n",
+        "\"\"\", conn)\n",
+        "print(\"SQL Q3:\", q3.head())"
+      ],
+      "metadata": {
+        "id": "rfl6QPZtkdEL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q4: 5 สมาชิกที่ยืมบ่อยที่สุด\n",
+        "q4 = pd.read_sql_query(\"\"\"\n",
+        "    SELECT m.name, COUNT(*) AS total_borrows\n",
+        "    FROM loans l\n",
+        "    JOIN members m ON l.member_id = m.member_id\n",
+        "    GROUP BY m.name\n",
+        "    ORDER BY total_borrows DESC, m.name ASC\n",
+        "    LIMIT 5;\n",
+        "\"\"\", conn)\n",
+        "print(\"SQL Q4:\", q4)"
+      ],
+      "metadata": {
+        "id": "zYKQAzbNkfVi"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Q5: รายการที่ยังไม่คืน\n",
+        "q5 = pd.read_sql_query(\"\"\"\n",
+        "    SELECT loan_id, book_id, member_id, borrow_date, due_date\n",
+        "    FROM loans\n",
+        "    WHERE return_date IS NULL\n",
+        "    ORDER BY due_date ASC;\n",
+        "\"\"\", conn)\n",
+        "print(\"SQL Q5:\", q5.head())"
+      ],
+      "metadata": {
+        "id": "cxiQT-Gvkhh7"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
